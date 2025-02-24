@@ -1,7 +1,8 @@
 import { Cloud, Sun, CloudRain, Snowflake, CloudLightning, Wind, Droplets } from "lucide-react"
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { useWeather } from "@/context/weather-context"
+import React from "react"
 
 export function CurrentWeather() {
   const { weatherData, loading, error } = useWeather()
@@ -9,7 +10,6 @@ export function CurrentWeather() {
   if (loading) {
     return <div className="text-center text-white text-lg">Chargement...</div>
   }
-
   if (error) {
     return (
       <div className="text-center text-red-500 bg-white/50 rounded-lg p-4">
@@ -17,7 +17,6 @@ export function CurrentWeather() {
       </div>
     )
   }
-
   if (!weatherData) {
     return null
   }
@@ -31,12 +30,31 @@ export function CurrentWeather() {
     return <Cloud className="h-20 w-20 text-gray-400" />
   }
 
+  const addFavorite = () => {
+    const favs = JSON.parse(localStorage.getItem("favorites") || "[]")
+    const exists = favs.find((f: any) => f.latitude === weatherData.latitude && f.longitude === weatherData.longitude)
+    if (!exists) {
+      favs.push({
+        name: weatherData.city,
+        latitude: weatherData.latitude,
+        longitude: weatherData.longitude,
+      })
+      localStorage.setItem("favorites", JSON.stringify(favs))
+      alert(`${weatherData.city} ajouté aux favoris !`)
+    } else {
+      alert(`${weatherData.city} est déjà dans vos favoris`)
+    }
+  }
+
   return (
     <Card className="bg-white/10 border-none shadow-xl rounded-xl transition-transform duration-300 hover:scale-105">
-      <CardHeader>
+      <CardHeader className="flex justify-between items-center">
         <CardTitle className="text-2xl text-white">
           Météo actuelle à {weatherData.city}
         </CardTitle>
+        <Button onClick={addFavorite} variant="outline" size="sm">
+          Ajouter aux favoris
+        </Button>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col md:flex-row items-center justify-between">
@@ -74,4 +92,3 @@ export function CurrentWeather() {
     </Card>
   )
 }
-

@@ -3,7 +3,13 @@
 import type React from "react"
 import { createContext, useContext, useState } from "react"
 
-type WeatherData = {
+export type HourlyData = {
+  time: string
+  temperature: number
+  icon: string
+}
+
+export type WeatherData = {
   city: string
   latitude: number
   longitude: number
@@ -12,6 +18,7 @@ type WeatherData = {
   humidity: number
   windSpeed: number
   forecast: Array<{ day: string; temp: number; icon: string }>
+  hourly?: HourlyData[]
 }
 
 type WeatherContextType = {
@@ -53,4 +60,3 @@ export function useWeather() {
   }
   return context
 }
-

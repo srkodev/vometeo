@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { Search } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -50,50 +49,26 @@ export function CitySearch() {
   const [input, setInput] = useState("")
   const [cities, setCities] = useState<City[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
-
-  // État pour contrôler la recherche (éviter refetch sur sélection)
   const [shouldFetchCities, setShouldFetchCities] = useState(true)
-
   const { setWeatherData, setLoading, setError } = useWeather()
 
-  // AbortController pour annuler une requête si l'utilisateur tape vite
   const abortControllerRef = useRef<AbortController | null>(null)
-
   const inputRef = useRef<HTMLInputElement>(null)
   const suggestionsRef = useRef<HTMLUListElement>(null)
 
-  // ----- RÉCUPÉRATION DES VILLES -----
   const fetchCities = useCallback(async (search: string) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
     abortControllerRef.current = new AbortController()
-
     try {
-      // Recherche avec espaces
-      const responseSpace = await fetch(
+      const response = await fetch(
         `https://geocoding-api.open-meteo.com/v1/search?name=${search}&count=5&language=fr&format=json`,
-        { signal: abortControllerRef.current.signal },
+        { signal: abortControllerRef.current.signal }
       )
-      const dataSpace = await responseSpace.json()
-
-      // Recherche alternative avec tirets
-      const normalizedSearch = search.replace(/\s+/g, "-")
-      const responseDash = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${normalizedSearch}&count=5&language=fr&format=json`,
-        { signal: abortControllerRef.current.signal },
-      )
-      const dataDash = await responseDash.json()
-
-      // Fusionner et dédupliquer
-      const allResults = [...(dataSpace.results || []), ...(dataDash.results || [])]
-      const uniqueResults = allResults.filter(
-        (city, index, self) =>
-          index === self.findIndex((t) => t.latitude === city.latitude && t.longitude === city.longitude),
-      )
-
-      if (uniqueResults.length > 0) {
-        setCities(uniqueResults.slice(0, 5))
+      const data = await response.json()
+      if (data.results && data.results.length > 0) {
+        setCities(data.results.slice(0, 5))
         setShowSuggestions(true)
       } else {
         setCities([])
@@ -108,19 +83,14 @@ export function CitySearch() {
     }
   }, [])
 
-  // ----- EFFET : SURVEILLE CHANGEMENT DE input -----
   useEffect(() => {
-    // On ne fait la requête QUE si shouldFetchCities est true
     if (!shouldFetchCities) return
-
     if (input.length > 1) {
       fetchCities(input)
     } else {
       setCities([])
       setShowSuggestions(false)
     }
-
-    // Nettoyage
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
@@ -128,7 +98,6 @@ export function CitySearch() {
     }
   }, [input, shouldFetchCities, fetchCities])
 
-  // ----- GÈRE LE CLIC À L'EXTÉRIEUR -----
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -140,57 +109,54 @@ export function CitySearch() {
         setShowSuggestions(false)
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside)
     return () => {
       document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [])
 
-  // ----- SÉLECTION D'UNE VILLE -----
   const handleCitySelect = async (city: City, event: React.MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
-
-    // On écrit le nom officiel dans le champ
     setInput(city.name)
-    // On empêche une nouvelle recherche
     setShouldFetchCities(false)
-    // On masque la liste
     setShowSuggestions(false)
     setCities([])
-
-    // Et on va chercher la météo pour cette ville
     await fetchWeather(city)
   }
 
-  // ----- RÉCUPÉRATION MÉTÉO -----
   const fetchWeather = async (city: City) => {
     setLoading(true)
     setError(null)
-
     try {
       const weatherResponse = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${city.latitude}&longitude=${city.longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max&timezone=auto&forecast_days=6`,
+        `https://api.open-meteo.com/v1/forecast?latitude=${city.latitude}&longitude=${city.longitude}&current_weather=true&daily=weather_code,temperature_2m_max&hourly=temperature_2m,weather_code&timezone=auto&forecast_days=6`
       )
       const weatherData = await weatherResponse.json()
-
-      const currentWeather = weatherData.current
+      const currentWeather = weatherData.current_weather
       const dailyForecast = weatherData.daily
+      const hourlyData = weatherData.hourly
 
       const weatherInfo = {
         city: city.name,
         latitude: city.latitude,
         longitude: city.longitude,
-        temperature: Math.round(currentWeather.temperature_2m),
-        condition: weatherCodes[currentWeather.weather_code] || "Inconnu",
-        humidity: currentWeather.relative_humidity_2m,
-        windSpeed: Math.round(currentWeather.wind_speed_10m * 3.6), // m/s => km/h
+        temperature: Math.round(currentWeather.temperature),
+        condition: weatherCodes[currentWeather.weathercode] || "Inconnu",
+        humidity: hourlyData.relativehumidity_2m ? hourlyData.relativehumidity_2m[0] : 0,
+        windSpeed: Math.round(currentWeather.windspeed * 3.6),
         forecast: dailyForecast.time.slice(1).map((time: string, index: number) => ({
           day: new Date(time).toLocaleDateString("fr-FR", { weekday: "short" }),
           temp: Math.round(dailyForecast.temperature_2m_max[index + 1]),
           icon: dailyForecast.weather_code[index + 1].toString(),
         })),
+        hourly: hourlyData
+          ? hourlyData.time.map((time: string, index: number) => ({
+              time,
+              temperature: Math.round(hourlyData.temperature_2m[index]),
+              icon: hourlyData.weather_code[index].toString(),
+            }))
+          : [],
       }
 
       setWeatherData(weatherInfo)
@@ -201,7 +167,6 @@ export function CitySearch() {
     }
   }
 
-  // ----- RENDU -----
   return (
     <div className="relative w-full max-w-sm mx-auto">
       <div className="relative">
@@ -218,7 +183,6 @@ export function CitySearch() {
         />
         <Search className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 transform text-gray-500" />
       </div>
-
       {showSuggestions && cities.length > 0 && (
         <ul
           ref={suggestionsRef}
@@ -241,4 +205,3 @@ export function CitySearch() {
     </div>
   )
 }
-
