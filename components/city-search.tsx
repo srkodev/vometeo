@@ -125,12 +125,14 @@ export function CitySearch() {
     await fetchWeather(city)
   }
 
+  // Nouvelle version : on récupère le lever/coucher du soleil et la
+  // probabilité de précipitation (quotidienne et horaire)
   const fetchWeather = async (city: City) => {
     setLoading(true)
     setError(null)
     try {
       const weatherResponse = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${city.latitude}&longitude=${city.longitude}&current_weather=true&daily=weather_code,temperature_2m_max&hourly=temperature_2m,weather_code&timezone=auto&forecast_days=6`
+        `https://api.open-meteo.com/v1/forecast?latitude=${city.latitude}&longitude=${city.longitude}&current_weather=true&daily=weather_code,temperature_2m_max,sunrise,sunset,precipitation_probability_max&hourly=temperature_2m,weather_code,precipitation_probability&timezone=auto&forecast_days=6`
       )
       const weatherData = await weatherResponse.json()
       const currentWeather = weatherData.current_weather
@@ -143,18 +145,32 @@ export function CitySearch() {
         longitude: city.longitude,
         temperature: Math.round(currentWeather.temperature),
         condition: weatherCodes[currentWeather.weathercode] || "Inconnu",
-        humidity: hourlyData.relativehumidity_2m ? hourlyData.relativehumidity_2m[0] : 0,
+        humidity: hourlyData.relativehumidity_2m
+          ? hourlyData.relativehumidity_2m[0]
+          : 0,
         windSpeed: Math.round(currentWeather.windspeed * 3.6),
+        // nouvelle info : probabilité de précipitation horaire (index=0 = heure courante si dispo)
+        precipitation: hourlyData.precipitation_probability
+          ? hourlyData.precipitation_probability[0]
+          : null,
         forecast: dailyForecast.time.slice(1).map((time: string, index: number) => ({
           day: new Date(time).toLocaleDateString("fr-FR", { weekday: "short" }),
           temp: Math.round(dailyForecast.temperature_2m_max[index + 1]),
           icon: dailyForecast.weather_code[index + 1].toString(),
+          precipProbability: dailyForecast.precipitation_probability_max
+            ? dailyForecast.precipitation_probability_max[index + 1]
+            : null,
+          sunrise: dailyForecast.sunrise[index + 1],
+          sunset: dailyForecast.sunset[index + 1],
         })),
         hourly: hourlyData
           ? hourlyData.time.map((time: string, index: number) => ({
               time,
               temperature: Math.round(hourlyData.temperature_2m[index]),
               icon: hourlyData.weather_code[index].toString(),
+              precip: hourlyData.precipitation_probability
+                ? hourlyData.precipitation_probability[index]
+                : null,
             }))
           : [],
       }
@@ -179,19 +195,19 @@ export function CitySearch() {
             setShouldFetchCities(true)
             setInput(e.target.value)
           }}
-          className="pr-10 bg-white/50 border-none text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-blue-300"
+          className="pr-10 bg-white/50 border-none text-gray-800 placeholder-gray-600 focus:ring-2 focus:ring-blue-300"
         />
-        <Search className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 transform text-gray-500" />
+        <Search className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 transform text-gray-600" />
       </div>
       {showSuggestions && cities.length > 0 && (
         <ul
           ref={suggestionsRef}
-          className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white/80 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
+          className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white/90 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
         >
           {cities.map((city) => (
             <li
               key={`${city.latitude}-${city.longitude}`}
-              className="relative cursor-pointer select-none py-2 px-4 text-gray-900 hover:bg-blue-100 transition-colors duration-150 ease-in-out"
+              className="relative cursor-pointer select-none py-2 px-4 text-gray-800 hover:bg-blue-100 transition-colors duration-150 ease-in-out"
               onClick={(e) => handleCitySelect(city, e)}
             >
               <span className="font-medium">{city.name}</span>

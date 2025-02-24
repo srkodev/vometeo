@@ -1,4 +1,13 @@
-import { Cloud, Sun, CloudRain, Snowflake, CloudLightning, Wind, Droplets } from "lucide-react"
+import {
+  Cloud,
+  Sun,
+  CloudRain,
+  Snowflake,
+  CloudLightning,
+  Wind,
+  Droplets,
+  CloudDrizzle,
+} from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useWeather } from "@/context/weather-context"
@@ -22,17 +31,22 @@ export function CurrentWeather() {
   }
 
   const getWeatherIcon = (condition: string) => {
-    if (condition.toLowerCase().includes("dégagé")) return <Sun className="h-20 w-20 text-yellow-300" />
-    if (condition.toLowerCase().includes("nuageux")) return <Cloud className="h-20 w-20 text-gray-300" />
-    if (condition.toLowerCase().includes("pluie")) return <CloudRain className="h-20 w-20 text-blue-300" />
-    if (condition.toLowerCase().includes("neige")) return <Snowflake className="h-20 w-20 text-blue-200" />
-    if (condition.toLowerCase().includes("orage")) return <CloudLightning className="h-20 w-20 text-purple-300" />
+    const c = condition.toLowerCase()
+    if (c.includes("dégagé")) return <Sun className="h-20 w-20 text-yellow-300" />
+    if (c.includes("nuageux")) return <Cloud className="h-20 w-20 text-gray-300" />
+    if (c.includes("pluie")) return <CloudRain className="h-20 w-20 text-blue-300" />
+    if (c.includes("bruine")) return <CloudDrizzle className="h-20 w-20 text-blue-200" />
+    if (c.includes("neige")) return <Snowflake className="h-20 w-20 text-blue-200" />
+    if (c.includes("orage")) return <CloudLightning className="h-20 w-20 text-purple-300" />
     return <Cloud className="h-20 w-20 text-gray-400" />
   }
 
   const addFavorite = () => {
     const favs = JSON.parse(localStorage.getItem("favorites") || "[]")
-    const exists = favs.find((f: any) => f.latitude === weatherData.latitude && f.longitude === weatherData.longitude)
+    const exists = favs.find(
+      (f: any) =>
+        f.latitude === weatherData.latitude && f.longitude === weatherData.longitude
+    )
     if (!exists) {
       favs.push({
         name: weatherData.city,
@@ -47,7 +61,7 @@ export function CurrentWeather() {
   }
 
   return (
-    <Card className="bg-white/10 border-none shadow-xl rounded-xl transition-transform duration-300 hover:scale-105">
+    <Card className="bg-white/10 border-none shadow-xl rounded-xl transition-transform duration-300 hover:scale-105 w-full max-w-2xl">
       <CardHeader className="flex justify-between items-center">
         <CardTitle className="text-2xl text-white">
           Météo actuelle à {weatherData.city}
@@ -62,9 +76,7 @@ export function CurrentWeather() {
             <div className="text-6xl font-bold text-white">
               {weatherData.temperature}°C
             </div>
-            <div className="text-xl text-white">
-              {weatherData.condition}
-            </div>
+            <div className="text-xl text-white">{weatherData.condition}</div>
           </div>
           <div>{getWeatherIcon(weatherData.condition)}</div>
         </div>
@@ -87,6 +99,20 @@ export function CurrentWeather() {
               </p>
             </div>
           </div>
+          {/* Nouveau bloc : probabilité de pluie si dispo */}
+          {weatherData.precipitation !== null && (
+            <div className="flex items-center space-x-2">
+              <CloudRain className="h-6 w-6 text-blue-300" />
+              <div>
+                <p className="text-sm font-medium text-white">
+                  Précipitations
+                </p>
+                <p className="text-lg font-semibold text-white">
+                  {weatherData.precipitation}%
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -7,6 +7,16 @@ export type HourlyData = {
   time: string
   temperature: number
   icon: string
+  precip?: number | null  // probabilité de précipitation par heure
+}
+
+export type DailyForecast = {
+  day: string
+  temp: number
+  icon: string
+  precipProbability?: number | null // probabilité de pluie journalière
+  sunrise?: string
+  sunset?: string
 }
 
 export type WeatherData = {
@@ -17,8 +27,9 @@ export type WeatherData = {
   condition: string
   humidity: number
   windSpeed: number
-  forecast: Array<{ day: string; temp: number; icon: string }>
+  forecast: DailyForecast[]
   hourly?: HourlyData[]
+  precipitation?: number | null // <-- Propriété qui manquait pour la météo actuelle
 }
 
 type WeatherContextType = {
